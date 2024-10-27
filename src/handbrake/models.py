@@ -1,14 +1,15 @@
 from datetime import timedelta
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_pascal
 
 
 class HandBrakeModel(BaseModel):
-    class Config:
-        alias_generator = to_pascal
-        populate_by_name = True
+    model_config = ConfigDict(
+        alias_generator=to_pascal,
+        populate_by_name=True,
+    )
 
 
 class VersionIdentifier(HandBrakeModel):

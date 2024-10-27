@@ -6,13 +6,12 @@ def test_version():
     h.version()  # just checking no error gets thrown
 
 
-def test_list_presets():
+def test_presets():
     h = HandBrake()
     presets = h.list_presets()
     assert len(presets) > 0
-
-
-def test_get_preset():
-    h = HandBrake()
-    cli_default = h.get_preset("CLI Default")
-    assert len(cli_default.preset_list) == 1
+    for group in presets.values():
+        for preset_name in group:
+            preset = h.get_preset(preset_name)
+            assert len(preset.preset_list) == 1
+            return

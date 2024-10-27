@@ -205,9 +205,6 @@ class HandBrake:
             raise RuntimeError("no preset list found")
         return preset_list
 
-    def get_default_preset(self) -> PresetList:
-        return self.get_preset("CLI Default")
-
     def list_presets(self) -> dict[str, dict[str, str]]:
         """
         Returns a dictionary of preset groups, each group is a dictionary mapping
