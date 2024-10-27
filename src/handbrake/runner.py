@@ -61,23 +61,27 @@ class CommandRunner:
             self.collect.append(line)
 
     def process(self, cmd: list[str]) -> Generator[Any, None, None]:
+        # create process with pipes to output
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stderr: list[str] = []
-        return_code: int | None = None
-        while return_code is None:
+
+        # slurp stdout line-by-line as the process is running
+        while proc.poll() is None:
             if proc.stdout is not None:
                 line = proc.stdout.readline().decode().rstrip()
-                if line:
-                    print(line)
                 o = self.process_line(line)
                 if o is not None:
                     yield o
-            if proc.stderr is not None:
-                line = proc.stderr.readline().decode().rstrip()
-                if line:
-                    print(line)
-                    stderr.append(line)
-            return_code = proc.poll()
 
-        if return_code != 0:
-            raise HandBrakeError(return_code, "\n".join(stderr))
+        # slurp the rest of stdout
+        if proc.stdout is not None:
+            lines = [l.rstrip() for l in proc.stdout.read().decode().splitlines()]
+            for line in lines:
+                o = self.process_line(line)
+                if o is not None:
+                    yield o
+
+        if proc.returncode != 0:
+            stderr = ""
+            if proc.stderr is not None:
+                stderr = proc.stderr.read().decode()
+            raise HandBrakeError(proc.returncode, stderr)
