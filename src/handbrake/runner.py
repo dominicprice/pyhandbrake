@@ -67,6 +67,8 @@ class CommandRunner:
         while return_code is None:
             if proc.stdout is not None:
                 line = proc.stdout.readline().decode().rstrip()
+                if line:
+                    print(line)
                 o = self.process_line(line)
                 if o is not None:
                     yield o
