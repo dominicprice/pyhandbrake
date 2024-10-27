@@ -117,7 +117,7 @@ class Preset(HandBrakeModel):
     inline_parameter_sets: bool
     metadata_passthrough: bool
     mp4_ipod_compatible: bool = Field(alias="Mp4iPodCompatible")
-    optimize: bool
+    optimize: bool = False
     picture_allow_upscaling: bool
     picture_auto_crop: bool
     picture_bottom_crop: int
@@ -128,7 +128,7 @@ class Preset(HandBrakeModel):
     picture_colorspace_preset: str
     picture_comb_detect_custom: str
     picture_comb_detect_preset: str
-    picture_crop_mode: int
+    picture_crop_mode: int = 0
     picture_dar_width: int = Field(alias="PictureDARWidth")
     picture_deblock_custom: str
     picture_deblock_preset: str
@@ -186,9 +186,9 @@ class Preset(HandBrakeModel):
     video_framerate: str
     video_framerate_mode: str
     video_gray_scale: bool
-    video_hw_decode: int | str = Field(alias="VideoHWDecode")
+    video_hw_decode: int | str = Field(0, alias="VideoHWDecode")
     video_level: str
-    video_multi_pass: bool
+    video_multi_pass: bool = False
     video_option_extra: str
     video_preset: str
     video_profile: str
@@ -197,7 +197,7 @@ class Preset(HandBrakeModel):
     video_quality_type: int
     video_scaler: str
     video_tune: str
-    video_turbo_multi_pass: bool
+    video_turbo_multi_pass: bool = False
     x264_option: str = Field(alias="x264Option")
     x264_use_advanced_options: bool | str = Field(alias="x264UseAdvancedOptions")
 
