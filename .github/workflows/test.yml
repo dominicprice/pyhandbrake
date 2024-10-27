@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pipx install poetry
+        run: pipx install poetry && apt install handbrake-cli
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
