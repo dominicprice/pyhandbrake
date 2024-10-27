@@ -1,0 +1,19 @@
+name: test
+
+on: [workflow_call]
+
+jobs:
+  static_checks:
+    uses: ./.github/workflows/static_checks.yml
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: pipx install poetry
+      - name: Install pyhandbrake
+        run: poetry install
+      - name: Run tests
+        run: make test

@@ -15,20 +15,6 @@ jobs:
       - name: Run MyPy
         run: make lint
 
-  coverage:
-    name: Test Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: pipx install poetry
-      - name: Install pyhandbrake
-        run: poetry install
-      - name: Run coverage
-        run: >
-          poetry run coverage run -m pytest tests/ &&
-          poetry run coverage report
-
   format:
     name: Check code formatting
     runs-on: ubuntu-latest

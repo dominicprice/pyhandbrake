@@ -47,7 +47,8 @@ class HandBrake:
             raise ValueError("invalid title")
 
         with ExitStack() as stack:
-            preset_import_files = []
+            # generate list of preset import files
+            preset_import_files: list[str] = []
             if preset_files is not None:
                 preset_import_files += [str(f) for f in preset_files]
             if presets is not None:
@@ -57,16 +58,17 @@ class HandBrake:
                     stack.enter_context(f)
                     f.write(p.model_dump_json(by_alias=True))
                     f.flush()
-            cmd = [
+
+            # generate command
+            cmd: list[str] = [
                 self.executable,
                 "-i",
-                input,
+                str(input),
                 "-o",
-                output,
+                str(output),
                 "--preset-import-file",
                 " ".join(preset_import_files),
             ]
-
             if preset is not None:
                 cmd += ["--preset", preset]
             if preset_from_gui:
@@ -78,6 +80,7 @@ class HandBrake:
             if no_dvdnav:
                 cmd += ["--no-dvdnav"]
 
+            # run command
             progress_processor = OutputProcessor(
                 ("Progress: {", "{"),
                 ("}", "}"),
@@ -100,6 +103,15 @@ class HandBrake:
             raise ValueError(
                 "title must be greater than 0, use scan_all_titles to select all titles"
             )
+
+        # generate command
+        cmd: list[str] = [self.executable, "--json", "-i", str(input), "--scan"]
+        if title == "main":
+            cmd += ["--main-feature"]
+        else:
+            cmd += ["-t", str(title)]
+
+        # run command
         progress_processor = OutputProcessor(
             ("Progress: {", "{"),
             ("}", "}"),
@@ -112,11 +124,6 @@ class HandBrake:
         )
         title_set: TitleSet | None = None
         runner = CommandRunner(progress_processor, titleset_processor)
-        cmd = [self.executable, "--json", "-i", input, "--scan"]
-        if title == "main":
-            cmd += ["--main-feature"]
-        else:
-            cmd += ["-t", str(title)]
         for obj in runner.process(cmd):
             if isinstance(obj, Progress):
                 if progress_handler is not None:
@@ -124,6 +131,7 @@ class HandBrake:
             elif isinstance(obj, TitleSet):
                 title_set = obj
 
+        # check output
         if title_set is None:
             raise RuntimeError("no titles found")
         if len(title_set.title_list) == 0:
@@ -136,6 +144,18 @@ class HandBrake:
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
         "Returns all titles"
+        # generate command
+        cmd: list[str] = [
+            self.executable,
+            "--json",
+            "-i",
+            str(input),
+            "--scan",
+            "-t",
+            "0",
+        ]
+
+        # run command
         progress_output_handler = OutputProcessor(
             ("Progress: {", "{"),
             ("}", "}"),
@@ -148,7 +168,6 @@ class HandBrake:
         )
         title_set: TitleSet | None = None
         runner = CommandRunner(progress_output_handler, titleset_output_handler)
-        cmd = [self.executable, "--json", "-i", input, "--scan", "-t", "0"]
         for obj in runner.process(cmd):
             if isinstance(obj, Progress):
                 if progress_handler is not None:
@@ -156,6 +175,7 @@ class HandBrake:
             elif isinstance(obj, TitleSet):
                 title_set = obj
 
+        # check output
         if title_set is None:
             raise RuntimeError("no titles found")
         return title_set

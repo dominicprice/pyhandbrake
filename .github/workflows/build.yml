@@ -1,14 +1,14 @@
-name: build_and_test
+name: build
 
 on: [push, workflow_call, workflow_dispatch]
 
 jobs:
-  static_checks:
-    uses: ./.github/workflows/static_checks.yml
+  test:
+    uses: ./.github/workflows/test.yml
 
-  build_wheels:
+  build_wheel:
     name: Build wheel
-    needs: [static_checks]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
 
   build_sdist:
     name: Build source distribution
-    needs: [static_checks]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
