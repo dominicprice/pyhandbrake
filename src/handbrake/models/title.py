@@ -1,7 +1,8 @@
 from typing import Any
 
-from handbrake.models.common import Duration, Fraction, HandBrakeModel
 from pydantic import Field
+
+from handbrake.models.common import Duration, Fraction, HandBrakeModel
 
 
 class AudioAttributes(HandBrakeModel):
