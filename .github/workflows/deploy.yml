@@ -5,8 +5,8 @@ on:
     types: [published]
 
 jobs:
-  build_and_test:
-    uses: ./.github/workflows/build_and_test.yml
+  build:
+    uses: ./.github/workflows/build.yml
 
   deploy:
     needs: [build_and_test]
