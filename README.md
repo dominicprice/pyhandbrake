@@ -47,8 +47,8 @@ contains methods for interacting the handbrake cli:
 * `HandBrake.load_preset_from_file(...)`
 
 Information about these function can be found in the docstrings on the methods,
-found in (src/handbrake/__init__.py) and information about the return types can
-be found in the (src/handbrake/models) directory.
+found in [src/handbrake/__init__.py](src/handbrake/__init__.py) and information about the return types can
+be found in the [src/handbrake/models](src/handbrake/models) directory.
 
 ### Passing arguments to `convert_title`
 
