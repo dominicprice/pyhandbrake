@@ -1,8 +1,7 @@
 from typing import Any
 
-from pydantic import Field
-
 from handbrake.models.common import Duration, Fraction, HandBrakeModel
+from pydantic import Field
 
 
 class AudioAttributes(HandBrakeModel):
@@ -37,9 +36,9 @@ class Chapter(HandBrakeModel):
 
 
 class Color(HandBrakeModel):
-    bit_depth: int
+    bit_depth: int = -1
     chroma_location: int
-    chroma_subsampling: str
+    chroma_subsampling: str = ""
     format: int
     matrix: int
     primary: int
@@ -88,7 +87,7 @@ class Title(HandBrakeModel):
     geometry: Geometry
     index: int
     interlace_detected: bool
-    loose_crop: tuple[int, int, int, int]
+    loose_crop: tuple[int, int, int, int] = (-1, -1, -1, -1)
     metadata: dict[str, Any]
     name: str
     path: str
