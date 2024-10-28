@@ -10,6 +10,12 @@ developing a project. Main features include:
 
 ## Installation
 
+You will need a working copy of HandBrakeCLI as it is not included in this
+python package. For instructions on multiple OSes, see the [installation
+guide](https://handbrake.fr/docs/en/1.2.0/get-handbrake/download-and-install.html).
+For ubuntu based distributions, it can be obtained with `sudo apt-get install
+handbrake-cli`.
+
 ### From PyPI
 
 pyhandbrake is available on PyPI, simply run `pip install pyhandbrake`
@@ -29,19 +35,27 @@ You can install python projects using pip directly from the git repo, in this in
 
 Although the package is named `pyhandbrake`, the actual name of the package you should import is `handbrake` (a slightly confusing but common convention with python packages). The package exposes one main object, `HandBrake`, which contains methods for interacting the handbrake cli:
 
-* `Handbrake.scan_all_titles(self, input: str | PathLike, progress_handler: ProgressHandler | None = None) -> TitleSet`: Returns information about all titles in the input file
-* `Handbrake.scan_title(self, input: str | PathLike, title: int, progress_handler: ProgressHandler | None = None) -> TitleSet`: Returns information about the given title in the input file
-* `Handbrake.rip_title(self, input: str | PathLike, output: str | PathLike, title: int, preset: Preset | str | None = None, preset_file: str | PathLike | None = None, preset_from_gui: bool = False, no_dvdnav: bool = False, progress_handler: ProgressHandler | None = None) -> None`: Rip the given title from the input file to the output file
-* `Handbrake.version(self) -> Version`: Return the version of HandBrakeCLI being used
-* `Handbrake.get_preset(self, name: str) -> Preset`: Return the builtin preset with the given name
-* `Handbrake.list_presets(self) -> dict[str, dict[str, str]]`: Return all the builtin presets
-* `Handbrake.load_preset(self, path: str | PathLike) -> Preset`: Load a custom preset at the given path
+* `HandBrake.version(...)`
+* `HandBrake.convert_title(...)`
+* `HandBrake.scan_title(...)`
+* `HandBrake.scan_all_titles(...)`
+* `HandBrake.get_preset(...)`
+* `HandBrake.list_presets(...)`
+* `HandBrake.load_preset_from_file(...)`
 
-Information about the return types can be found in the `models.py` file.
+Information about these function can be found in the docstrings on the methods, found in `src/handbrake/__init__.py` and information about the return types can be found in the `src/handbrake/models` directory.
 
-### Passing arguments to `rip_title`
+### Passing arguments to `convert_title`
 
-Rather than accept all possible command line arguments, `rip_title` only accepts a preset. Therefore you need to find out which preset setting corresponds to the given command line argument and set that value in a `Preset` object and pass that as the `preset` argument. For example:
+Rather than accept all possible command line arguments, `convert_title` only allows
+you to set most options through a preset. Therefore you need to find out which
+preset setting corresponds to the given command line argument and set that value
+in a `Preset` object and add the preset to the search path by using it in the
+`presets` parameter.
+
+Note that you should name the preset something unique, and then tell handbrake
+to use that preset by also passing the name to the `preset` argument, for
+example:
 
 ```
 from handbrake import HandBrake
@@ -51,14 +65,15 @@ h = HandBrake()
 # h.get_preset("<builtin preset name>") to get any
 # of the inbuilt presets, or h.load_preset("<path to preset>")
 # to load a custom preset
-preset = h.get_default_preset()
+preset = h.get_preset("CLI Default")
 
 # a preset contains layers which are held in the `preset_list` field. The default
 # presets all contain one layer so we only do our work on `preset_list[0]`
-preset.preset_list[0].picture_width = 100
-preset.preset_list[0].picture_height = 50
+preset.preset_list[0]["PictureWidth"] = 100
+preset.preset_list[0]["PictureHeight"] = 50
+preset.preset_list[0]["PresetName"] = "my_preset"
 
-h.rip_title("/path/to/input", "/path/to/output", "main", preset=preset)
+h.convert_title("/path/to/input", "/path/to/output", "main", preset="my_preset", presets=[preset])
 ```
 
 ### Handling progress updates
@@ -86,7 +101,7 @@ pyhandbrake uses poetry as a toolchain. You should install poetry (via e.g.
 `pipx install poetry`) and then inside the project root run `poetry install` to
 create a virtual environment with all the dependencies.
 
-Common project tasks are defined inside the makefile:
+Common project tasks are defined inside the Makefile:
 
 * `make test`: Run the test suite
 * `make wheel`: Create a python wheel
@@ -102,13 +117,13 @@ I anticipate that the most likely thing to cause errors/unexpected output is if
 fields are added/removed/renamed from the JSON objects which handbrake outputs.
 
 For added fields, pyhandbrake should silently ignore them - to include them you
-will need to modify the relevant model in `models.py` to include the field. Note
-that handbrake uses pascal case for field names, but I have used snake case for
-the model field names. Pydantic automatically takes care of converting between
-these naming conventions, but will trip over capitalised abbreviations, (e.g. a
-field named `PicturePAR`). In this case, you need to assign a `Field` value to
-the field with the full name handbrake uses as an alias parameter (e.g.
-`picture_par: str = Field(alias="PicturePAR")`).
+will need to modify the relevant model in the `models` subpackage to include the
+field. Note that handbrake uses pascal case for field names, but I have used
+snake case for the model field names. Pydantic automatically takes care of
+converting between these naming conventions, but will trip over capitalised
+abbreviations, (e.g. a field named `SequenceID`). In this case, you need to
+assign a `Field` value to the field with the full name handbrake uses as an
+alias parameter (e.g. `sequence_id: str = Field(alias="SequenceID")`).
 
 For fields which are removed/renamed, a pydantic validation error will be
 emitted as the value would be required to populate the model. In this instance,

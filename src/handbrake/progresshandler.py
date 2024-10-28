@@ -1,5 +1,5 @@
 from typing import Callable
 
-from handbrake.models import Progress
+from handbrake.models.progress import Progress
 
 ProgressHandler = Callable[[Progress], None]

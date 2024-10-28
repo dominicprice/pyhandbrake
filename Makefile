@@ -12,3 +12,11 @@ format:
 test:
 	poetry run coverage run -m pytest tests/ && poetry run coverage report
 
+
+.PHONY: sdist
+sdist:
+	poetry build -f sdist
+
+.PHONY: wheel
+wheel:
+	poetry build -f wheel

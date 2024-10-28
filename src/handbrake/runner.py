@@ -44,6 +44,7 @@ class CommandRunner:
 
     def process_line(self, line: str) -> Any:
         if self.current_processor is None:
+            # attempt to start a processor
             for processor in self.processors:
                 c = processor.match_start(line)
                 if c is not None:
@@ -51,6 +52,7 @@ class CommandRunner:
                     self.collect = [c]
                     return
         else:
+            # attempt to end the current processor
             c = self.current_processor.match_end(line)
             if c is not None:
                 self.collect.append(c)
@@ -58,6 +60,7 @@ class CommandRunner:
                 self.current_processor = None
                 self.collect = []
                 return res
+            # append line to current collect
             self.collect.append(line)
 
     def process(self, cmd: list[str]) -> Generator[Any, None, None]:
@@ -80,6 +83,7 @@ class CommandRunner:
                 if o is not None:
                     yield o
 
+        # raise error on nonzero return code
         if proc.returncode != 0:
             stderr = ""
             if proc.stderr is not None:
