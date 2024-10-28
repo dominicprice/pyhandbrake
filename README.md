@@ -33,7 +33,10 @@ You can install python projects using pip directly from the git repo, in this in
 
 ## Usage
 
-Although the package is named `pyhandbrake`, the actual name of the package you should import is `handbrake` (a slightly confusing but common convention with python packages). The package exposes one main object, `HandBrake`, which contains methods for interacting the handbrake cli:
+Although the package is named `pyhandbrake`, the actual name of the package you
+should import is `handbrake` (a slightly confusing but common convention with
+python packages). The package exposes one main object, `HandBrake`, which
+contains methods for interacting the handbrake cli:
 
 * `HandBrake.version(...)`
 * `HandBrake.convert_title(...)`
@@ -43,7 +46,9 @@ Although the package is named `pyhandbrake`, the actual name of the package you 
 * `HandBrake.list_presets(...)`
 * `HandBrake.load_preset_from_file(...)`
 
-Information about these function can be found in the docstrings on the methods, found in `src/handbrake/__init__.py` and information about the return types can be found in the `src/handbrake/models` directory.
+Information about these function can be found in the docstrings on the methods,
+found in (src/handbrake/__init__.py) and information about the return types can
+be found in the (src/handbrake/models) directory.
 
 ### Passing arguments to `convert_title`
 
@@ -103,8 +108,11 @@ create a virtual environment with all the dependencies.
 
 Common project tasks are defined inside the Makefile:
 
+* `make lint`: Run the mypy type checker
+* `make format`: Run the code formatter
 * `make test`: Run the test suite
-* `make wheel`: Create a python wheel
+* `make sdist`: Build the source distribution
+* `make wheel`: Build a python wheel
 
 ## Troubleshooting
 
@@ -117,13 +125,14 @@ I anticipate that the most likely thing to cause errors/unexpected output is if
 fields are added/removed/renamed from the JSON objects which handbrake outputs.
 
 For added fields, pyhandbrake should silently ignore them - to include them you
-will need to modify the relevant model in the `models` subpackage to include the
-field. Note that handbrake uses pascal case for field names, but I have used
-snake case for the model field names. Pydantic automatically takes care of
-converting between these naming conventions, but will trip over capitalised
-abbreviations, (e.g. a field named `SequenceID`). In this case, you need to
-assign a `Field` value to the field with the full name handbrake uses as an
-alias parameter (e.g. `sequence_id: str = Field(alias="SequenceID")`).
+will need to modify the relevant model in the [models](src/handbrake/models)
+subpackage to include the field. Note that handbrake uses pascal case for field
+names, but I have used snake case for the model field names. Pydantic
+automatically takes care of converting between these naming conventions, but
+will trip over capitalised abbreviations, (e.g. a field named `SequenceID`). In
+this case, you need to assign a `Field` value to the field with the full name
+handbrake uses as an alias parameter (e.g. `sequence_id: str =
+Field(alias="SequenceID")`).
 
 For fields which are removed/renamed, a pydantic validation error will be
 emitted as the value would be required to populate the model. In this instance,
