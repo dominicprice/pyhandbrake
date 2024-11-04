@@ -65,27 +65,24 @@ class CommandRunner:
 
     def process(self, cmd: list[str]) -> Generator[Any, None, None]:
         # create process with pipes to output
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        )
+        if proc.stdout is None:
+            raise ValueError
 
-        # slurp stdout line-by-line as the process is running
-        while proc.poll() is None:
-            if proc.stdout is not None:
-                line = proc.stdout.readline().decode().rstrip()
-                o = self.process_line(line)
-                if o is not None:
-                    yield o
-
-        # slurp the rest of stdout
-        if proc.stdout is not None:
-            lines = [l.rstrip() for l in proc.stdout.read().decode().splitlines()]
-            for line in lines:
-                o = self.process_line(line)
-                if o is not None:
-                    yield o
+        # slurp stdout line-by-line
+        while True:
+            stdout = proc.stdout.readline().rstrip()
+            if stdout == "" and proc.poll() is not None:
+                break
+            o = self.process_line(stdout)
+            if o is not None:
+                yield o
 
         # raise error on nonzero return code
         if proc.returncode != 0:
-            stderr = ""
-            if proc.stderr is not None:
-                stderr = proc.stderr.read().decode()
-            raise HandBrakeError(proc.returncode, stderr)
+            raise HandBrakeError(proc.returncode)

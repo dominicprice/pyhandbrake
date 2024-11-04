@@ -106,6 +106,7 @@ class HandBrake:
             # generate command
             cmd: list[str] = [
                 self.executable,
+                "--json",
                 "-i",
                 str(input),
                 "-o",
