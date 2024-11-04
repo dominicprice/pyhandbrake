@@ -1,5 +1,6 @@
-from handbrake.models.common import HandBrakeModel
 from pydantic import Field
+
+from handbrake.models.common import HandBrakeModel
 
 
 class ProgressScanning(HandBrakeModel):
