@@ -1,6 +1,5 @@
-from pydantic import Field
-
 from handbrake.models.common import HandBrakeModel
+from pydantic import Field
 
 
 class ProgressScanning(HandBrakeModel):
@@ -41,9 +40,9 @@ class Progress(HandBrakeModel):
     @property
     def percent(self) -> float:
         if self.scanning is not None:
-            return self.scanning.progress
+            return self.scanning.progress * 100
         elif self.working is not None:
-            return self.working.progress
+            return self.working.progress * 100
         elif self.work_done is not None:
             return 100
         return 0
