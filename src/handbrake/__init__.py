@@ -27,8 +27,8 @@ class HandBrake:
         :returns: an object holding the handbrake version
         """
         version_processor = OutputProcessor(
-            ("Version: {", "{"),
-            ("}", "}"),
+            (b"Version: {", b"{"),
+            (b"}", b"}"),
             Version.model_validate_json,
         )
         version: Version | None = None
@@ -166,8 +166,8 @@ class HandBrake:
 
             # run command
             progress_processor = OutputProcessor(
-                ("Progress: {", "{"),
-                ("}", "}"),
+                (b"Progress: {", b"{"),
+                (b"}", b"}"),
                 Progress.model_validate_json,
             )
             runner = CommandRunner(progress_processor)
@@ -202,13 +202,13 @@ class HandBrake:
 
         # run command
         progress_processor = OutputProcessor(
-            ("Progress: {", "{"),
-            ("}", "}"),
+            (b"Progress: {", b"{"),
+            (b"}", b"}"),
             Progress.model_validate_json,
         )
         titleset_processor = OutputProcessor(
-            ("JSON Title Set: {", "{"),
-            ("}", "}"),
+            (b"JSON Title Set: {", b"{"),
+            (b"}", b"}"),
             TitleSet.model_validate_json,
         )
         title_set: TitleSet | None = None
@@ -251,13 +251,13 @@ class HandBrake:
 
         # run command
         progress_output_handler = OutputProcessor(
-            ("Progress: {", "{"),
-            ("}", "}"),
+            (b"Progress: {", b"{"),
+            (b"}", b"}"),
             Progress.model_validate_json,
         )
         titleset_output_handler = OutputProcessor(
-            ("JSON Title Set: {", "{"),
-            ("}", "}"),
+            (b"JSON Title Set: {", b"{"),
+            (b"}", b"}"),
             TitleSet.model_validate_json,
         )
         title_set: TitleSet | None = None
@@ -281,7 +281,7 @@ class HandBrake:
         :returns: a `Preset` object containing the selected preset
         """
         preset_list_processor = OutputProcessor(
-            ("{", "{"), ("}", "}"), lambda d: Preset.model_validate_json(d)
+            (b"{", b"{"), (b"}", b"}"), lambda d: Preset.model_validate_json(d)
         )
         preset_list: Preset | None = None
         runner = CommandRunner(preset_list_processor)

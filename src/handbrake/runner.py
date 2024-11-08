@@ -14,25 +14,25 @@ class OutputProcessor(Generic[T]):
 
     def __init__(
         self,
-        start_line: tuple[str, str],
-        end_line: tuple[str, str],
-        converter: Callable[[str], T],
+        start_line: tuple[bytes, bytes],
+        end_line: tuple[bytes, bytes],
+        converter: Callable[[bytes], T],
     ):
         self.start_line = start_line
         self.end_line = end_line
         self.converter = converter
 
-    def match_start(self, line: str) -> str | None:
+    def match_start(self, line: bytes) -> bytes | None:
         if line == self.start_line[0]:
             return self.start_line[1]
         return None
 
-    def match_end(self, line: str) -> str | None:
+    def match_end(self, line: bytes) -> bytes | None:
         if line == self.end_line[0]:
             return self.end_line[1]
         return None
 
-    def convert(self, data: str) -> T:
+    def convert(self, data: bytes) -> T:
         return self.converter(data)
 
 
@@ -40,9 +40,9 @@ class CommandRunner:
     def __init__(self, *processors: OutputProcessor):
         self.processors = processors
         self.current_processor: OutputProcessor | None = None
-        self.collect: list[str] = []
+        self.collect: list[bytes] = []
 
-    def process_line(self, line: str) -> Any:
+    def process_line(self, line: bytes) -> Any:
         if self.current_processor is None:
             # attempt to start a processor
             for processor in self.processors:
@@ -56,7 +56,7 @@ class CommandRunner:
             c = self.current_processor.match_end(line)
             if c is not None:
                 self.collect.append(c)
-                res = self.current_processor.convert("\n".join(self.collect))
+                res = self.current_processor.convert(b"\n".join(self.collect))
                 self.current_processor = None
                 self.collect = []
                 return res
@@ -69,7 +69,6 @@ class CommandRunner:
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
-            text=True,
         )
         if proc.stdout is None:
             raise ValueError
@@ -77,7 +76,7 @@ class CommandRunner:
         # slurp stdout line-by-line
         while True:
             stdout = proc.stdout.readline().rstrip()
-            if stdout == "" and proc.poll() is not None:
+            if len(stdout) == 0 and proc.poll() is not None:
                 break
             o = self.process_line(stdout)
             if o is not None:
