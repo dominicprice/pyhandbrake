@@ -74,7 +74,7 @@ class Subtitle(HandBrakeModel):
     language_code: str
     source: int
     source_name: str
-    track_number: int
+    track_number: int = 0
 
 
 class Title(HandBrakeModel):
