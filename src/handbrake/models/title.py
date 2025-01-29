@@ -28,7 +28,7 @@ class Audio(HandBrakeModel):
     language: str
     language_code: str
     sample_rate: int
-    track_number: int
+    track_number: int = 0
 
 
 class Chapter(HandBrakeModel):
@@ -38,7 +38,7 @@ class Chapter(HandBrakeModel):
 
 class Color(HandBrakeModel):
     bit_depth: int = -1
-    chroma_location: int
+    chroma_location: int = 0
     chroma_subsampling: str = ""
     format: int
     matrix: int
