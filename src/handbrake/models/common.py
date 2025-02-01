@@ -21,6 +21,13 @@ class Duration(HandBrakeModel):
     def to_timedelta(self) -> timedelta:
         return timedelta(hours=self.hours, minutes=self.minutes, seconds=self.seconds)
 
+    @staticmethod
+    def from_timedelta(t: timedelta) -> "Duration":
+        s = round(t.total_seconds())
+        m, s = divmod(s, 60)
+        h, m = divmod(m, 60)
+        return Duration(hours=h, minutes=m, seconds=s, ticks=0)
+
 
 class Fraction(HandBrakeModel):
     den: int
