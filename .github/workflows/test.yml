@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
-        run: pipx install poetry && apt-get update && apt-get install -y handbrake-cli
+        run: pipx install poetry && sudo apt-get update && sudo apt-get install -y handbrake-cli
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
