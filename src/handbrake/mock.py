@@ -1,7 +1,9 @@
+from dataclasses import dataclass
 from datetime import timedelta
 from os import PathLike
 from time import sleep
 from typing import Iterable, Literal
+
 from handbrake import HandBrake
 from handbrake.models.common import Duration, Fraction, Offset
 from handbrake.models.preset import Preset
@@ -14,7 +16,6 @@ from handbrake.models.progress import (
 from handbrake.models.title import Color, Geometry, Title, TitleSet
 from handbrake.models.version import Version, VersionIdentifier
 from handbrake.progresshandler import ProgressHandler
-from dataclasses import dataclass
 
 
 @dataclass
