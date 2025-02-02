@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass
 from datetime import timedelta
 from os import PathLike
@@ -16,6 +17,11 @@ from handbrake.models.progress import (
 from handbrake.models.title import Color, Geometry, Title, TitleSet
 from handbrake.models.version import Version, VersionIdentifier
 from handbrake.progresshandler import ProgressHandler
+
+
+class DictJSONEncoder(json.JSONEncoder):
+    def default(self, o: object):
+        return o.__dict__
 
 
 @dataclass
@@ -56,10 +62,20 @@ class MockTitle:
 
 
 class MockHandBrake(HandBrake):
-    def __init__(self, scan_factor: float, convert_factor: float, *titles: MockTitle):
+    def __init__(
+        self,
+        title_runtime_minutes: Iterable[int],
+        touch: bool = False,
+        scan_factor: float = 0.0003,
+        convert_factor: float = 0.001,
+    ):
         self.scan_factor = scan_factor
         self.convert_factor = convert_factor
-        self.titles = titles
+        self.titles = [
+            MockTitle(i, timedelta(minutes=m))
+            for i, m in enumerate(title_runtime_minutes, 1)
+        ]
+        self.touch = touch
         self.main_title = max(
             range(len(self.titles)),
             key=lambda i: self.titles[i].runtime,
@@ -104,7 +120,26 @@ class MockHandBrake(HandBrake):
             t = self.titles[self.main_title]
         else:
             t = self.titles[title - 1]
-        total = round(t.runtime.total_seconds())
+        total = int(t.runtime.total_seconds())
+        if self.touch:
+            with open(output, "w") as f:
+                d = {
+                    "input": input,
+                    "chapters": chapters,
+                    "angle": angle,
+                    "previews": previews,
+                    "start_at_preview": start_at_preview,
+                    "start_at": start_at,
+                    "stop_at": stop_at,
+                    "audio": audio,
+                    "subtitles": subtitles,
+                    "preset": preset,
+                    "preset_files": preset_files,
+                    "presets": presets,
+                    "preset_from_gui": preset_from_gui,
+                    "no_dvdnav": no_dvdnav,
+                }
+                json.dump(d, f)
         for i in range(total):
             sleep(self.convert_factor)
             if progress_handler is not None:
@@ -133,6 +168,7 @@ class MockHandBrake(HandBrake):
         title: int | Literal["main"],
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
+        _ = input
         if title == 0:
             raise ValueError("title == 0, use scan_all_titles to select all titles")
         elif title == "main":
@@ -142,7 +178,7 @@ class MockHandBrake(HandBrake):
             t = self.titles[title - 1]
             i = title
 
-        total = round(t.runtime.total_seconds())
+        total = int(t.runtime.total_seconds())
         for i in range(total):
             sleep(self.scan_factor)
             if progress_handler is not None:
@@ -164,20 +200,24 @@ class MockHandBrake(HandBrake):
         input: str | PathLike,
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
+        _ = input
+        partial = 0
+        overall_total = sum(int(t.runtime.total_seconds()) for t in self.titles)
         for i, t in enumerate(self.titles):
-            total = round(t.runtime.total_seconds())
+            total = int(t.runtime.total_seconds())
             for p in range(total):
                 sleep(self.scan_factor)
                 if progress_handler is not None:
                     ps = ProgressScanning(
                         preview=0,
                         preview_count=0,
-                        progress=p / total,
+                        progress=(partial + p) / overall_total,
                         SequenceID=0,
                         title=i + 1,
                         title_count=len(self.titles),
                     )
                     progress_handler(Progress(scanning=ps, state="SCANNING"))
+            partial += total
 
         return TitleSet(
             main_feature=self.main_title + 1,
@@ -185,10 +225,12 @@ class MockHandBrake(HandBrake):
         )
 
     def get_preset(self, name: str) -> Preset:
+        _ = name
         return Preset(version_major=0, version_minor=0, version_micro=0, preset_list=[])
 
     def list_presets(self) -> dict[str, dict[str, str]]:
         return {}
 
     def load_preset_from_file(self, file: str | PathLike) -> Preset:
+        _ = file
         return Preset(version_major=0, version_minor=0, version_micro=0, preset_list=[])
