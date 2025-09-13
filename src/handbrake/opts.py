@@ -13,37 +13,21 @@ SubtitleSelection = Literal["all", "first", "scan", "none"]
 
 @dataclass
 class ConvertOpts:
-    "path to the input source"
     input: str | os.PathLike
-    "path to the output file"
     output: str | os.PathLike
-    "the index of the title to rip, or the literal string 'main'"
     title: int | Literal["main"]
-    "the chapter, or chapter range specified as (start, stop) to convert"
     chapters: int | tuple[int, int] | None = None
-    "the video angle to convert"
     angle: int | None = None
-    "an (int, bool) tuple indicating the number of preview to generate and whether the previews should be stored to disk"
     previews: tuple[int, bool] | None = None
-    "an index of the preview to start the conversion at"
     start_at_preview: int | None = None
-    "an offset from the beginning of the media to start conversion at"
     start_at: Offset | None = None
-    "an offset from the start_at parameter to stop conversion at"
     stop_at: Offset | None = None
-    "select which audio track(s) to convert"
     audio: int | Iterable[int] | AudioSelection | None = None
-    "select which subtitle track(s) to convert"
     subtitles: int | Iterable[int] | SubtitleSelection | None = None
-    "the name of a preset to use"
     preset: str | None = None
-    "a list of extra preset files to load when searching for the named preset"
     preset_files: Iterable[str | os.PathLike] | None = None
-    "a list of `Preset` objects to load when searching for the named preset"
     presets: Iterable[Preset] | None = None
-    "whether to import preset settings from the GUI"
     preset_from_gui: bool = False
-    "switch to toggle whether to use dvdnav for reading DVDs"
     no_dvdnav: bool = False
 
     def generate_cmd_args(self, stack: ExitStack) -> list[str]:
