@@ -1,40 +1,63 @@
 import subprocess
 from contextlib import ExitStack
-from os import PathLike
-from tempfile import NamedTemporaryFile
-from typing import Iterable, Literal
-
-from handbrake.models.common import Offset
-from handbrake.models.preset import Preset
+import os
+import shutil
+from handbrake.models.preset import Preset, PresetGroup, PresetInfo
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
 from handbrake.progresshandler import ProgressHandler
-from handbrake.runner import CommandRunner, OutputProcessor
+from handbrake.runner import (
+    VersionCommandRunner,
+    ConvertCommandRunner,
+    ScanCommandRunner,
+    PresetCommandRunner,
+)
+from handbrake.utils import Canceller, ConvertOpts, ScanOpts
 
 
 class HandBrake:
-    def __init__(self, executable: str = "HandBrakeCLI"):
+    def __init__(self, executable: str | None = None):
         """Initialise the HandBrake wrapper
 
         :param executable: path to the HandBrakeCLI executable to use
         """
-        self.executable = executable
+        if executable is not None:
+            self.executable = executable
+        elif e := os.getenv("HANDBRAKECLI"):
+            self.executable = e
+        elif w := shutil.which("HandBrakeCLI"):
+            self.executable = w
+        elif w := shutil.which("handbrakecli"):
+            self.executable = w
+        else:
+            raise FileNotFoundError("could not find HandBrakeCLI")
 
     def version(self) -> Version:
         """Returns the version of HandBrakeCLI
 
         :returns: an object holding the handbrake version
         """
-        version_processor = OutputProcessor(
-            (b"Version: {", b"{"),
-            (b"}", b"}"),
-            Version.model_validate_json,
-        )
         version: Version | None = None
-        runner = CommandRunner(version_processor)
-        cmd = [self.executable, "--json", "--version"]
-        for obj in runner.process(cmd):
+        runner = VersionCommandRunner()
+        args = ["--json", "--version"]
+        for obj in runner.process(self.executable, *args):
+            if isinstance(obj, Version):
+                version = obj
+
+        if version is None:
+            raise RuntimeError("version not found")
+        return version
+
+    async def version_async(self, cancel: Canceller | None = None) -> Version:
+        """Returns the version of HandBrakeCLI
+
+        :returns: an object holding the handbrake version
+        """
+        version: Version | None = None
+        runner = VersionCommandRunner()
+        args = ["--json", "--version"]
+        async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
             if isinstance(obj, Version):
                 version = obj
 
@@ -44,176 +67,57 @@ class HandBrake:
 
     def convert_title(
         self,
-        input: str | PathLike,
-        output: str | PathLike,
-        title: int | Literal["main"],
-        chapters: int | tuple[int, int] | None = None,
-        angle: int | None = None,
-        previews: tuple[int, bool] | None = None,
-        start_at_preview: int | None = None,
-        start_at: Offset | None = None,
-        stop_at: Offset | None = None,
-        audio: int | Iterable[int] | Literal["all", "first", "none"] | None = None,
-        subtitles: (
-            int | Iterable[int] | Literal["all", "first", "scan", "none"] | None
-        ) = None,
-        preset: str | None = None,
-        preset_files: Iterable[str | PathLike] | None = None,
-        presets: Iterable[Preset] | None = None,
-        preset_from_gui: bool = False,
-        no_dvdnav: bool = False,
+        opts: ConvertOpts,
         progress_handler: ProgressHandler | None = None,
     ):
         """Convert a title from the input source
 
-        :param input: path to the input source
-        :param output: path to the output file
-        :param title: the index of the title to rip, or the literal string "main"
-        to automatically select the main feature
-        :param chapters: the chapter, or chapter range specified as (start, stop), to convert
-        :param angle: the video angle to convert
-        :param previews: an (int, bool) tuple indicating the number of previews to generate
-        and whether the previews should be stored to disk
-        :param start_at_preview: an index of the preview to start the conversion at
-        :param start_at: an offset from the beginning of the media to start conversion at
-        :param stop_at: an offset from the start_at parameter to stop conversion at
-        :param audio: select which audio track(s) to convert
-        :param subtitles: select which subtitle track(s) to convert
-        :param preset: the name of the preset to use
-        :param preset_files: a list of extra preset files to load when searching for the named preset
-        :param presets: a list of `Preset` objects to load when searching for the named preset
-        :param preset_from_gui: whether to import preset settings from the GUI
-        :param no_dvdnav: switch to toggle whether to use dvdnav for reading DVDs
+        :param opts: conversion options
         :param progress_handler: a callback function to handle progress updates
         """
-        if title == 0:
-            raise ValueError("invalid title")
-
         with ExitStack() as stack:
-            # generate list of preset import files
-            preset_import_files: list[str] = []
-            if preset_files is not None:
-                preset_import_files += [str(f) for f in preset_files]
-            if presets is not None:
-                # generate a temporary file for each in-memory preset
-                for p in presets:
-                    f = NamedTemporaryFile("w")
-                    stack.enter_context(f)
-                    f.write(p.model_dump_json(by_alias=True))
-                    f.flush()
-                    preset_import_files.append(f.name)
-
-            # generate command
-            cmd: list[str] = [
-                self.executable,
-                "--json",
-                "-i",
-                str(input),
-                "-o",
-                str(output),
-            ]
-            if len(preset_import_files) > 0:
-                cmd += [
-                    "--preset-import-file",
-                    " ".join(preset_import_files),
-                ]
-            if preset is not None:
-                cmd += ["--preset", preset]
-            if preset_from_gui:
-                cmd += ["--preset-import-gui"]
-            if title == "main":
-                cmd += ["--main-feature"]
-            else:
-                cmd += ["-t", str(title)]
-            if no_dvdnav:
-                cmd += ["--no-dvdnav"]
-            if isinstance(chapters, tuple):
-                cmd += ["-c", f"{chapters[0]}-{chapters[1]}"]
-            elif isinstance(chapters, int):
-                cmd += ["-c", str(chapters)]
-            if angle is not None:
-                cmd += ["--angle", str(angle)]
-            if previews is not None:
-                cmd += ["--previews", f"{previews[0]}:{int(previews[1])}"]
-            if start_at_preview is not None:
-                cmd += ["--start-at-preview", str(start_at_preview)]
-            if start_at is not None:
-                cmd += ["--start-at", f"{start_at.unit}:{start_at.count}"]
-            if stop_at is not None:
-                cmd += ["--stop-at", f"{stop_at.unit}:{stop_at.count}"]
-            if isinstance(audio, int):
-                cmd += ["--audio", str(audio)]
-            elif audio == "all":
-                cmd += ["--all-audio"]
-            elif audio == "first":
-                cmd += ["--first-audio"]
-            elif audio == "none":
-                cmd += ["--audio", "none"]
-            elif audio is not None:
-                cmd += ["--audio", ",".join(str(a) for a in audio)]
-            if isinstance(subtitles, int):
-                cmd += ["--subtitle", str(subtitles)]
-            elif subtitles == "all":
-                cmd += ["--all-subtitles"]
-            elif subtitles == "first":
-                cmd += ["--first-subtitle"]
-            elif subtitles == "none":
-                cmd += ["--subtitle", "none"]
-            elif subtitles == "scan":
-                cmd += ["--subtitle", "scan"]
-            elif subtitles is not None:
-                cmd += ["--subtitle", ",".join(str(s) for s in subtitles)]
-
-            # run command
-            progress_processor = OutputProcessor(
-                (b"Progress: {", b"{"),
-                (b"}", b"}"),
-                Progress.model_validate_json,
-            )
-            runner = CommandRunner(progress_processor)
-            for obj in runner.process(cmd):
+            args = opts.generate_cmd_args(stack)
+            runner = ConvertCommandRunner()
+            for obj in runner.process(self.executable, *args):
                 if isinstance(obj, Progress):
                     if progress_handler is not None:
                         progress_handler(obj)
 
-    def scan_title(
+    async def convert_title_async(
         self,
-        input: str | PathLike,
-        title: int | Literal["main"],
+        opts: ConvertOpts,
+        progress_handler: ProgressHandler | None = None,
+        cancel: Canceller | None = None,
+    ):
+        """Convert a title from the input source
+
+        :param opts: conversion options
+        :param progress_handler: a callback function to handle progress updates
+        """
+        with ExitStack() as stack:
+            args = opts.generate_cmd_args(stack)
+            runner = ConvertCommandRunner()
+            async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
+                if isinstance(obj, Progress):
+                    if progress_handler is not None:
+                        progress_handler(obj)
+
+    def scan_titles(
+        self,
+        opts: ScanOpts,
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
         """Scans the selected title and returns information about it
 
-        :param input: path to the input source
-        :param title: the index of the title to scan, or the literal string "main"
-        to automatically select the main feature
+        :param opts: scanning options
         :param progress_handler: a callback function to handle progress updates
         :return: a `TitleSet` containing the selected title
         """
-        if title == 0:
-            raise ValueError("title == 0, use scan_all_titles to select all titles")
 
-        # generate command
-        cmd: list[str] = [self.executable, "--json", "-i", str(input), "--scan"]
-        if title == "main":
-            cmd += ["--main-feature"]
-        else:
-            cmd += ["-t", str(title)]
-
-        # run command
-        progress_processor = OutputProcessor(
-            (b"Progress: {", b"{"),
-            (b"}", b"}"),
-            Progress.model_validate_json,
-        )
-        titleset_processor = OutputProcessor(
-            (b"JSON Title Set: {", b"{"),
-            (b"}", b"}"),
-            TitleSet.model_validate_json,
-        )
+        args = opts.generate_cmd_args()
         title_set: TitleSet | None = None
-        runner = CommandRunner(progress_processor, titleset_processor)
-        for obj in runner.process(cmd):
+        runner = ScanCommandRunner()
+        for obj in runner.process(self.executable, *args):
             if isinstance(obj, Progress):
                 if progress_handler is not None:
                     progress_handler(obj)
@@ -227,42 +131,23 @@ class HandBrake:
             raise RuntimeError("title not found")
         return title_set
 
-    def scan_all_titles(
+    async def scan_title_async(
         self,
-        input: str | PathLike,
+        opts: ScanOpts,
         progress_handler: ProgressHandler | None = None,
+        cancel: Canceller | None = None,
     ) -> TitleSet:
-        """Scan all titles and return information about them
+        """Scans the selected title and returns information about it
 
-        :param input: path to the input source
+        :param opts: scanning options
         :param progress_handler: a callback function to handle progress updates
-        :return: a `TitleSet` containing the all titles in the input source
+        :return: a `TitleSet` containing the selected title
         """
-        # generate command
-        cmd: list[str] = [
-            self.executable,
-            "--json",
-            "-i",
-            str(input),
-            "--scan",
-            "-t",
-            "0",
-        ]
 
-        # run command
-        progress_output_handler = OutputProcessor(
-            (b"Progress: {", b"{"),
-            (b"}", b"}"),
-            Progress.model_validate_json,
-        )
-        titleset_output_handler = OutputProcessor(
-            (b"JSON Title Set: {", b"{"),
-            (b"}", b"}"),
-            TitleSet.model_validate_json,
-        )
+        args = opts.generate_cmd_args()
         title_set: TitleSet | None = None
-        runner = CommandRunner(progress_output_handler, titleset_output_handler)
-        for obj in runner.process(cmd):
+        runner = ScanCommandRunner()
+        async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
             if isinstance(obj, Progress):
                 if progress_handler is not None:
                     progress_handler(obj)
@@ -272,6 +157,8 @@ class HandBrake:
         # check output
         if title_set is None:
             raise RuntimeError("no titles found")
+        if len(title_set.title_list) == 0:
+            raise RuntimeError("title not found")
         return title_set
 
     def get_preset(self, name: str) -> Preset:
@@ -280,20 +167,16 @@ class HandBrake:
         :param name: the name of the preset to select
         :returns: a `Preset` object containing the selected preset
         """
-        preset_list_processor = OutputProcessor(
-            (b"{", b"{"), (b"}", b"}"), lambda d: Preset.model_validate_json(d)
-        )
         preset_list: Preset | None = None
-        runner = CommandRunner(preset_list_processor)
-        cmd = [
-            self.executable,
+        runner = PresetCommandRunner()
+        args = [
             "--json",
             "-Z",
             name,
             "--preset-export",
             name,
         ]
-        for obj in runner.process(cmd):
+        for obj in runner.process(self.executable, *args):
             if isinstance(obj, Preset):
                 preset_list = obj
 
@@ -301,31 +184,41 @@ class HandBrake:
             raise RuntimeError("no preset list found")
         return preset_list
 
-    def list_presets(self) -> dict[str, dict[str, str]]:
+    def list_presets(self) -> list[PresetGroup]:
         """List all builtin presets
 
-        :returns: a dict[group, dict[name, description]] containing all builtin presets
+        :returns: a list of preset groups
         """
-        res: dict[str, dict[str, str]] = {}
-        group: dict[str, str] = {}
-        preset: str = ""
+        res: list[PresetGroup] = []
+        curgroup = PresetGroup(name="", presets=[])
+        curpreset = PresetInfo(name="", description="")
         cmd = [self.executable, "-z"]
         proc = subprocess.run(cmd, capture_output=True, check=True)
+
+        # the output is of the format
+        # groupA/
+        #     preset 1 name
+        #         the description of the preset
+        #     preset 2 name
+        #         the second description, it can span
+        #         multiple lines
+        # groupB/
+        #     ...
         for line in proc.stderr.decode().splitlines():
             if line.endswith("/"):
-                group = {}
-                res[line[:-1]] = group
+                curgroup = PresetGroup(name=line[:-1], presets=[])
+                res.append(curgroup)
             elif line.startswith("        "):
-                if group[preset] == "":
-                    group[preset] = line.strip()
+                if curpreset.description == "":
+                    curpreset.description = line.strip()
                 else:
-                    group[preset] += " " + line.strip()
+                    curpreset.description += " " + line.strip()
             elif line.startswith("    "):
-                preset = line.strip()
-                group[preset] = ""
+                curpreset = PresetInfo(name=line.strip(), description="")
+                curgroup.presets.append(curpreset)
         return res
 
-    def load_preset_from_file(self, file: str | PathLike) -> Preset:
+    def load_preset_from_file(self, file: str | os.PathLike) -> Preset:
         """Load a handbrake preset export into a `Preset` object
 
         :returns: a `Preset` object from the data in the given file

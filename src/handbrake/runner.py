@@ -1,7 +1,14 @@
 import subprocess
-from typing import Any, Callable, Generator, Generic, TypeVar
+import asyncio
+import asyncio.subprocess as asubprocess
+from typing import Any, AsyncGenerator, Callable, Generator, Generic, TypeVar
 
 from handbrake.errors import HandBrakeError
+from handbrake.models.preset import Preset
+from handbrake.models.progress import Progress
+from handbrake.models.title import TitleSet
+from handbrake.models.version import Version
+from handbrake.utils import Canceller
 
 T = TypeVar("T")
 
@@ -63,10 +70,51 @@ class CommandRunner:
             # append line to current collect
             self.collect.append(line)
 
-    def process(self, cmd: list[str]) -> Generator[Any, None, None]:
+    async def aprocess(
+        self,
+        cmd: str,
+        *args: str,
+        cancel: Canceller | None = None,
+    ) -> AsyncGenerator[Any, None]:
+        aproc = await asubprocess.create_subprocess_exec(
+            cmd,
+            *args,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            if aproc.stdout is None:
+                raise ValueError
+
+            # slurp output while running
+            while True:
+                if aproc.returncode is not None:
+                    break
+                elif cancel is not None and cancel.is_cancelled():
+                    return
+                try:
+                    line = await asyncio.wait_for(aproc.stdout.readline(), 1)
+                except asyncio.TimeoutError:
+                    pass
+                else:
+                    o = self.process_line(line.rstrip())
+                    if o is not None:
+                        yield o
+
+            # slurp the remaining output
+            lines = await aproc.stdout.read()
+            for line in lines.splitlines():
+                o = self.process_line(line.rstrip())
+                if o is not None:
+                    yield o
+
+        finally:
+            aproc.kill()
+
+    def process(self, cmd: str, *args: str) -> Generator[Any, None, None]:
         # create process with pipes to output
         proc = subprocess.Popen(
-            cmd,
+            [cmd, *args],
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
@@ -85,3 +133,48 @@ class CommandRunner:
         # raise error on nonzero return code
         if proc.returncode != 0:
             raise HandBrakeError(proc.returncode)
+
+
+class VersionCommandRunner(CommandRunner):
+    def __init__(self):
+        processor = OutputProcessor(
+            (b"Version: {", b"{"),
+            (b"}", b"}"),
+            Version.model_validate_json,
+        )
+        super().__init__(processor)
+
+
+class ConvertCommandRunner(CommandRunner):
+    def __init__(self):
+        processor = OutputProcessor(
+            (b"Progress: {", b"{"),
+            (b"}", b"}"),
+            Progress.model_validate_json,
+        )
+        super().__init__(processor)
+
+
+class ScanCommandRunner(CommandRunner):
+    def __init__(self):
+        progress_processor = OutputProcessor(
+            (b"Progress: {", b"}"),
+            (b"}", b"}"),
+            Progress.model_validate_json,
+        )
+        titleset_processor = OutputProcessor(
+            (b"JSON Title Set: {", b"{"),
+            (b"}", b"}"),
+            TitleSet.model_validate_json,
+        )
+        super().__init__(progress_processor, titleset_processor)
+
+
+class PresetCommandRunner(CommandRunner):
+    def __init__(self):
+        processor = OutputProcessor(
+            (b"{", b"{"),
+            (b"}", b"}"),
+            Preset.model_validate_json,
+        )
+        super().__init__(processor)

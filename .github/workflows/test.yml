@@ -27,13 +27,50 @@ jobs:
       - name: Check black formatting
         run: black --check .
 
-  test:
-    name: Test
+  test-linux:
+    name: Test Linux
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        run: pipx install poetry && sudo apt-get update && sudo apt-get install -y handbrake-cli
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+      - name: Install handbrake
+        run: sudo apt-get update && sudo apt-get install -y handbrake-cli
+      - name: Install pyhandbrake
+        run: poetry install
+      - name: Run tests
+        run: make test
+
+  test-windows:
+    name: Test macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install handbrake
+        run: |
+          Invoke-WebRequest https://github.com/HandBrake/HandBrake/releases/download/1.10.2/HandBrakeCLI-1.10.2-win-x86_64.zip -OutFile ./handbrakecli.zip
+          Expand-Archive -Path ./handbrakecli.zip -DestinationPath C:/
+      - name: Install pyhandbrake
+        run: poetry install
+      - name: Run tests
+        run: make test
+
+  test-macos:
+    name: Test Windows
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+      - name: Install handbrake
+        run: |
+          curl https://github.com/HandBrake/HandBrake/releases/download/1.10.2/HandBrakeCLI-1.10.2-win-x86_64.zip -o ./handbrakecli.zip
+          unzip ./handbrakecli.zip
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
