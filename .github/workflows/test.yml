@@ -58,7 +58,9 @@ jobs:
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
-        run: make test
+        run: |
+          C:\Users\runneradmin\.local\bin\poetry run -m pytest tests/
+          C:\Users\runneradmin\.local\bin\poetry run coverage report
 
   test-macos:
     name: Test macOS
@@ -72,7 +74,7 @@ jobs:
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@main
       - name: Install handbrake
-        run: brew install handbrakecli
+        run: brew install handbrake
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
