@@ -1,6 +1,6 @@
-import subprocess
 import asyncio
 import asyncio.subprocess as asubprocess
+import subprocess
 from typing import Any, AsyncGenerator, Callable, Generator, Generic, TypeVar
 
 from handbrake.errors import HandBrakeError

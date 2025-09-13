@@ -1,17 +1,18 @@
-import subprocess
-from contextlib import ExitStack
 import os
 import shutil
+import subprocess
+from contextlib import ExitStack
+
 from handbrake.models.preset import Preset, PresetGroup, PresetInfo
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
 from handbrake.progresshandler import ProgressHandler
 from handbrake.runner import (
-    VersionCommandRunner,
     ConvertCommandRunner,
-    ScanCommandRunner,
     PresetCommandRunner,
+    ScanCommandRunner,
+    VersionCommandRunner,
 )
 from handbrake.utils import Canceller, ConvertOpts, ScanOpts
 

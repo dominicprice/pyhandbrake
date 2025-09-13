@@ -1,8 +1,9 @@
-from dataclasses import dataclass
 import os
-from tempfile import NamedTemporaryFile
 from contextlib import ExitStack
-from typing import Literal, Iterable
+from dataclasses import dataclass
+from tempfile import NamedTemporaryFile
+from typing import Iterable, Literal
+
 from handbrake.models.common import Offset
 from handbrake.models.preset import Preset
 
