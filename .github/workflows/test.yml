@@ -69,8 +69,10 @@ jobs:
         uses: snok/install-poetry@v1
       - name: Install handbrake
         run: |
-          curl https://github.com/HandBrake/HandBrake/releases/download/1.10.2/HandBrakeCLI-1.10.2-win-x86_64.zip -o ./handbrakecli.zip
-          unzip ./handbrakecli.zip
+          curl https://github.com/HandBrake/HandBrake/releases/download/1.10.2/HandBrake-1.10.2.dmg -o ./handbrakecli.dmg
+          hdiutil attach ./handbrakecli.dmg
+          cp -R /Volumes/handbrakecli /Applications
+          hdiutil unmount handbrakecli
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
