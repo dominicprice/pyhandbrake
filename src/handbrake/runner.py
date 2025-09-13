@@ -3,12 +3,12 @@ import asyncio.subprocess as asubprocess
 import subprocess
 from typing import Any, AsyncGenerator, Callable, Generator, Generic, TypeVar
 
+from handbrake.canceller import Canceller
 from handbrake.errors import HandBrakeError
 from handbrake.models.preset import Preset
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
-from handbrake.canceller import Canceller
 
 T = TypeVar("T")
 
