@@ -47,8 +47,6 @@ class ConvertOpts:
     no_dvdnav: bool = False
 
     def generate_cmd_args(self, stack: ExitStack) -> list[str]:
-        args = []
-
         if self.title == 0:
             raise ValueError("invalid title")
 

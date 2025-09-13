@@ -43,8 +43,8 @@ jobs:
         run: make test
 
   test-windows:
-    name: Test macOS
-    runs-on: macos-latest
+    name: Test Windows
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,8 +60,8 @@ jobs:
         run: make test
 
   test-macos:
-    name: Test Windows
-    runs-on: windows-latest
+    name: Test macOS
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4

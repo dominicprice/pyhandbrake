@@ -3,10 +3,12 @@ import shutil
 import subprocess
 from contextlib import ExitStack
 
+from handbrake.canceller import Canceller
 from handbrake.models.preset import Preset, PresetGroup, PresetInfo
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
+from handbrake.opts import ConvertOpts, ScanOpts
 from handbrake.progresshandler import ProgressHandler
 from handbrake.runner import (
     ConvertCommandRunner,
@@ -14,7 +16,6 @@ from handbrake.runner import (
     ScanCommandRunner,
     VersionCommandRunner,
 )
-from handbrake.utils import Canceller, ConvertOpts, ScanOpts
 
 
 class HandBrake:

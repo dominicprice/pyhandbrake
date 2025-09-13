@@ -6,8 +6,8 @@ from time import sleep
 from typing import Iterable, Literal
 
 from handbrake import HandBrake
-from handbrake.models.common import Duration, Fraction, Offset
-from handbrake.models.preset import Preset
+from handbrake.models.common import Duration, Fraction
+from handbrake.models.preset import Preset, PresetGroup
 from handbrake.models.progress import (
     Progress,
     ProgressScanning,
@@ -16,6 +16,7 @@ from handbrake.models.progress import (
 )
 from handbrake.models.title import Color, Geometry, Title, TitleSet
 from handbrake.models.version import Version, VersionIdentifier
+from handbrake.opts import ConvertOpts
 from handbrake.progresshandler import ProgressHandler
 
 
@@ -96,48 +97,31 @@ class MockHandBrake(HandBrake):
 
     def convert_title(
         self,
-        input: str | PathLike,
-        output: str | PathLike,
-        title: int | Literal["main"],
-        chapters: int | tuple[int, int] | None = None,
-        angle: int | None = None,
-        previews: tuple[int, bool] | None = None,
-        start_at_preview: int | None = None,
-        start_at: Offset | None = None,
-        stop_at: Offset | None = None,
-        audio: int | Iterable[int] | Literal["all", "first", "none"] | None = None,
-        subtitles: (
-            int | Iterable[int] | Literal["all", "first", "scan", "none"] | None
-        ) = None,
-        preset: str | None = None,
-        preset_files: Iterable[str | PathLike] | None = None,
-        presets: Iterable[Preset] | None = None,
-        preset_from_gui: bool = False,
-        no_dvdnav: bool = False,
+        opts: ConvertOpts,
         progress_handler: ProgressHandler | None = None,
     ):
-        if title == "main":
+        if opts.title == "main":
             t = self.titles[self.main_title]
         else:
-            t = self.titles[title - 1]
+            t = self.titles[opts.title - 1]
         total = int(t.runtime.total_seconds())
         if self.touch:
-            with open(output, "w") as f:
+            with open(opts.output, "w") as f:
                 d = {
                     "input": input,
-                    "chapters": chapters,
-                    "angle": angle,
-                    "previews": previews,
-                    "start_at_preview": start_at_preview,
-                    "start_at": start_at,
-                    "stop_at": stop_at,
-                    "audio": audio,
-                    "subtitles": subtitles,
-                    "preset": preset,
-                    "preset_files": preset_files,
-                    "presets": presets,
-                    "preset_from_gui": preset_from_gui,
-                    "no_dvdnav": no_dvdnav,
+                    "chapters": opts.chapters,
+                    "angle": opts.angle,
+                    "previews": opts.previews,
+                    "start_at_preview": opts.start_at_preview,
+                    "start_at": opts.start_at,
+                    "stop_at": opts.stop_at,
+                    "audio": opts.audio,
+                    "subtitles": opts.subtitles,
+                    "preset": opts.preset,
+                    "preset_files": opts.preset_files,
+                    "presets": opts.presets,
+                    "preset_from_gui": opts.preset_from_gui,
+                    "no_dvdnav": opts.no_dvdnav,
                 }
                 json.dump(d, f)
         for i in range(total):
@@ -228,8 +212,8 @@ class MockHandBrake(HandBrake):
         _ = name
         return Preset(version_major=0, version_minor=0, version_micro=0, preset_list=[])
 
-    def list_presets(self) -> dict[str, dict[str, str]]:
-        return {}
+    def list_presets(self) -> list[PresetGroup]:
+        return []
 
     def load_preset_from_file(self, file: str | PathLike) -> Preset:
         _ = file

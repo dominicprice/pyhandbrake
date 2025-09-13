@@ -8,7 +8,7 @@ from handbrake.models.preset import Preset
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
-from handbrake.utils import Canceller
+from handbrake.canceller import Canceller
 
 T = TypeVar("T")
 
