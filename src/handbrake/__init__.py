@@ -1,7 +1,7 @@
+from io import TextIOBase
 import os
 import shutil
 import subprocess
-from contextlib import ExitStack
 from typing import Literal
 
 from handbrake.canceller import Canceller
@@ -81,13 +81,12 @@ class HandBrake:
         :param opts: conversion options
         :param progress_handler: a callback function to handle progress updates
         """
-        with ExitStack() as stack:
-            args = generate_convert_args(stack, input, output, title, opts)
-            runner = ConvertCommandRunner()
-            for obj in runner.process(self.executable, *args):
-                if isinstance(obj, Progress):
-                    if progress_handler is not None:
-                        progress_handler(obj)
+        args = generate_convert_args(input, output, title, opts)
+        runner = ConvertCommandRunner()
+        for obj in runner.process(self.executable, *args):
+            if isinstance(obj, Progress):
+                if progress_handler is not None:
+                    progress_handler(obj)
 
     async def convert_title_async(
         self,
@@ -103,13 +102,12 @@ class HandBrake:
         :param opts: conversion options
         :param progress_handler: a callback function to handle progress updates
         """
-        with ExitStack() as stack:
-            args = generate_convert_args(stack, input, output, title, opts)
-            runner = ConvertCommandRunner()
-            async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
-                if isinstance(obj, Progress):
-                    if progress_handler is not None:
-                        progress_handler(obj)
+        args = generate_convert_args(input, output, title, opts)
+        runner = ConvertCommandRunner()
+        async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
+            if isinstance(obj, Progress):
+                if progress_handler is not None:
+                    progress_handler(obj)
 
     def scan_titles(
         self,
@@ -141,7 +139,7 @@ class HandBrake:
             raise RuntimeError("title not found")
         return title_set
 
-    async def scan_title_async(
+    async def scan_titles_async(
         self,
         input: str | os.PathLike,
         title: int | Literal["main", "all"],
@@ -229,10 +227,20 @@ class HandBrake:
                 curgroup.presets.append(curpreset)
         return res
 
-    def load_preset_from_file(self, file: str | os.PathLike) -> Preset:
+    def load_preset_from_file(self, file: str | os.PathLike | TextIOBase) -> Preset:
         """Load a handbrake preset export into a `Preset` object
 
         :returns: a `Preset` object from the data in the given file
         """
-        with open(file) as f:
-            return Preset.model_validate_json(f.read())
+        if isinstance(file, TextIOBase):
+            return Preset.model_validate_json(file.read())
+        else:
+            with open(file) as f:
+                return Preset.model_validate_json(f.read())
+
+    def save_preset_to_file(self, file: str | os.PathLike | TextIOBase, preset: Preset):
+        if isinstance(file, TextIOBase):
+            file.write(preset.model_dump_json(by_alias=True))
+        else:
+            with open(file, "w") as f:
+                f.write(preset.model_dump_json(by_alias=True))

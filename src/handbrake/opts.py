@@ -1,10 +1,7 @@
 import os
-from contextlib import ExitStack
-from tempfile import NamedTemporaryFile
 from typing import Iterable, Literal, TypedDict
 
 from handbrake.models.common import Offset
-from handbrake.models.preset import Preset
 
 AudioSelection = Literal["all", "first", "none"]
 SubtitleSelection = Literal["all", "first", "scan", "none"]
@@ -21,13 +18,11 @@ class ConvertOpts(TypedDict, total=False):
     subtitles: int | Iterable[int] | SubtitleSelection
     preset: str
     preset_files: Iterable[str | os.PathLike]
-    presets: Iterable[Preset]
     preset_from_gui: bool
     no_dvdnav: bool
 
 
 def generate_convert_args(
-    stack: ExitStack,
     input: str | os.PathLike,
     output: str | os.PathLike,
     title: int | Literal["main"],
@@ -55,15 +50,6 @@ def generate_convert_args(
         preset_import_files: list[str] = []
         if preset_files := opts.get("preset_files"):
             preset_import_files += [str(f) for f in preset_files]
-
-        # generate a temporary file for each in-memory preset
-        if opts.get("presets") is not None:
-            for p in opts.get("presets", []):
-                f = NamedTemporaryFile("w")
-                stack.enter_context(f)
-                f.write(p.model_dump_json(by_alias=True))
-                f.flush()
-                preset_import_files.append(f.name)
 
         # preset args
         if len(preset_import_files) > 0:
