@@ -108,6 +108,10 @@ class CommandRunner:
                 if o is not None:
                     yield o
 
+            # raise error on nonzero return code
+            if aproc.returncode != 0:
+                raise HandBrakeError(aproc.returncode)
+
         finally:
             aproc.kill()
 
@@ -116,7 +120,7 @@ class CommandRunner:
         proc = subprocess.Popen(
             [cmd, *args],
             stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
         )
         if proc.stdout is None:
             raise ValueError

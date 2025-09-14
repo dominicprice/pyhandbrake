@@ -70,7 +70,6 @@ jobs:
       - name: Install Poetry
         uses: snok/install-poetry@v1
       - name: Set up Homebrew
-        id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@main
       - name: Install handbrake
         run: brew install handbrake
