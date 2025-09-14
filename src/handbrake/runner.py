@@ -120,7 +120,7 @@ class CommandRunner:
         proc = subprocess.Popen(
             [cmd, *args],
             stdout=subprocess.PIPE,
-            # stderr=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
         if proc.stdout is None:
             raise ValueError
