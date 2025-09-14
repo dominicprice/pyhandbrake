@@ -53,11 +53,14 @@ jobs:
       - name: Install handbrake
         run: |
           Invoke-WebRequest https://github.com/HandBrake/HandBrake/releases/download/1.10.2/HandBrakeCLI-1.10.2-win-x86_64.zip -OutFile ./handbrakecli.zip
-          Expand-Archive -Path ./handbrakecli.zip -DestinationPath C:\
+          Expand-Archive -Path ./handbrakecli.zip -DestinationPath C:\User\runneradmin\.local\bin
+      - name: Set path
+        run: |
+          echo "C:\User\runneradmin\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           $env:path -split ";"
-          Get-ChildItem -Path C:\
+          Get-ChildItem -Path C:\User\runneradmin\.local\bin
       - name: Install pyhandbrake
-        run: C:\Users\runneradmin\.local\bin\poetry install
+        run: poetry install
       - name: Run tests
         run: |
           C:\Users\runneradmin\.local\bin\poetry run coverage run -m pytest tests/ && C:\Users\runneradmin\.local\bin\poetry run coverage report
