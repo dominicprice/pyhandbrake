@@ -56,9 +56,10 @@ jobs:
           Expand-Archive -Path ./handbrakecli.zip -DestinationPath C:\User\runneradmin\.local\bin
       - name: Set path
         run: |
-          echo "C:\User\runneradmin\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+          echo "C:\c\User\runneradmin\.local\bin" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
           $env:path -split ";"
           Get-ChildItem -Path C:\User\runneradmin\.local\bin
+          Get-ChildItem -Path C:\
       - name: Install pyhandbrake
         run: poetry install
       - name: Run tests
