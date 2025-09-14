@@ -10,7 +10,7 @@ format:
 
 .PHONY: test
 test:
-	poetry run coverage run -m pytest tests/ && poetry run coverage report
+	poetry run coverage run -m pytest -vvv tests/ && poetry run coverage report
 
 
 .PHONY: sdist
