@@ -9,7 +9,7 @@ from handbrake.models.preset import Preset, PresetGroup, PresetInfo
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
-from handbrake.opts import ConvertOpts, generate_scan_args, generate_convert_args
+from handbrake.opts import ConvertOpts, generate_convert_args, generate_scan_args
 from handbrake.progresshandler import ProgressHandler
 from handbrake.runner import (
     ConvertCommandRunner,

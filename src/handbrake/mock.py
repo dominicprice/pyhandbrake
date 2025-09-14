@@ -1,4 +1,6 @@
+import asyncio
 import json
+import os
 from dataclasses import dataclass
 from datetime import timedelta
 from os import PathLike
@@ -6,6 +8,7 @@ from time import sleep
 from typing import Iterable, Literal
 
 from handbrake import HandBrake
+from handbrake.canceller import Canceller
 from handbrake.models.common import Duration, Fraction
 from handbrake.models.preset import Preset, PresetGroup
 from handbrake.models.progress import (
@@ -95,33 +98,39 @@ class MockHandBrake(HandBrake):
             version_string="0.0.0",
         )
 
+    async def version_async(self, cancel: Canceller | None = None) -> Version:
+        _ = cancel
+        return Version(
+            arch="Python",
+            name="HandBrake (mock)",
+            official=False,
+            repo_date="",
+            repo_hash="",
+            system="Python",
+            type="mock",
+            version=VersionIdentifier(major=0, minor=0, point=0),
+            version_string="0.0.0",
+        )
+
     def convert_title(
         self,
-        opts: ConvertOpts,
+        input: str | os.PathLike,
+        output: str | os.PathLike,
+        title: int | Literal["main"],
+        opts: ConvertOpts | None = None,
         progress_handler: ProgressHandler | None = None,
     ):
-        if opts.title == "main":
+        if title == "main":
             t = self.titles[self.main_title]
         else:
-            t = self.titles[opts.title - 1]
+            t = self.titles[title - 1]
         total = int(t.runtime.total_seconds())
         if self.touch:
-            with open(opts.output, "w") as f:
+            with open(output, "w") as f:
                 d = {
                     "input": input,
-                    "chapters": opts.chapters,
-                    "angle": opts.angle,
-                    "previews": opts.previews,
-                    "start_at_preview": opts.start_at_preview,
-                    "start_at": opts.start_at,
-                    "stop_at": opts.stop_at,
-                    "audio": opts.audio,
-                    "subtitles": opts.subtitles,
-                    "preset": opts.preset,
-                    "preset_files": opts.preset_files,
-                    "presets": opts.presets,
-                    "preset_from_gui": opts.preset_from_gui,
-                    "no_dvdnav": opts.no_dvdnav,
+                    "title": title,
+                    **(opts or {}),
                 }
                 json.dump(d, f)
         for i in range(total):
@@ -146,48 +155,72 @@ class MockHandBrake(HandBrake):
             pd = ProgressWorkDone(error=0, SequenceID=0)
             progress_handler(Progress(work_done=pd, state="WORKDONE"))
 
-    def scan_title(
+    async def convert_title_async(
         self,
-        input: str | PathLike,
+        input: str | os.PathLike,
+        output: str | os.PathLike,
         title: int | Literal["main"],
+        opts: ConvertOpts | None = None,
         progress_handler: ProgressHandler | None = None,
-    ) -> TitleSet:
-        _ = input
-        if title == 0:
-            raise ValueError("title == 0, use scan_all_titles to select all titles")
-        elif title == "main":
+        cancel: Canceller | None = None,
+    ):
+        if title == "main":
             t = self.titles[self.main_title]
-            i = self.main_title
         else:
             t = self.titles[title - 1]
-            i = title
-
         total = int(t.runtime.total_seconds())
+        if self.touch:
+            with open(output, "w") as f:
+                d = {
+                    "input": input,
+                    "title": title,
+                    **(opts or {}),
+                }
+                json.dump(d, f)
         for i in range(total):
-            sleep(self.scan_factor)
+            await asyncio.sleep(self.convert_factor)
+            if cancel and cancel.is_cancelled():
+                return
             if progress_handler is not None:
-                sleep(1)
-                ps = ProgressScanning(
-                    preview=0,
-                    preview_count=0,
+                pw = ProgressWorking(
+                    ETASeconds=int(self.convert_factor * (total - i)),
+                    hours=0,
+                    minutes=i,
+                    Pass=1,
+                    pass_count=1,
+                    PassID=1,
+                    paused=0,
                     progress=i / total,
+                    rate=1,
+                    rate_avg=1,
+                    seconds=0,
                     SequenceID=0,
-                    title=1,
-                    title_count=1,
                 )
-                progress_handler(Progress(scanning=ps, state="SCANNING"))
+                progress_handler(Progress(working=pw, state="WORKING"))
+        if progress_handler is not None:
+            pd = ProgressWorkDone(error=0, SequenceID=0)
+            progress_handler(Progress(work_done=pd, state="WORKDONE"))
 
-        return TitleSet(main_feature=i + 1, title_list=[t.get_title()])
-
-    def scan_all_titles(
+    def scan_titles(
         self,
         input: str | PathLike,
+        title: int | Literal["main", "all"],
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
         _ = input
+        if title == 0 or title == "all":
+            main_feature = self.main_title + 1
+            titles = [t for t in self.titles]
+        elif title == "main":
+            main_feature = self.main_title + 1
+            titles = [self.titles[self.main_title]]
+        else:
+            main_feature = title + 1
+            titles = [self.titles[title - 1]]
+
         partial = 0
-        overall_total = sum(int(t.runtime.total_seconds()) for t in self.titles)
-        for i, t in enumerate(self.titles):
+        overall_total = sum(int(t.runtime.total_seconds()) for t in titles)
+        for i, t in enumerate(titles):
             total = int(t.runtime.total_seconds())
             for p in range(total):
                 sleep(self.scan_factor)
@@ -204,8 +237,51 @@ class MockHandBrake(HandBrake):
             partial += total
 
         return TitleSet(
-            main_feature=self.main_title + 1,
-            title_list=[t.get_title() for t in self.titles],
+            main_feature=main_feature,
+            title_list=[t.get_title() for t in titles],
+        )
+
+    async def scan_titles_async(
+        self,
+        input: str | PathLike,
+        title: int | Literal["main", "all"],
+        progress_handler: ProgressHandler | None = None,
+        cancel: Canceller | None = None,
+    ) -> TitleSet:
+        _ = input
+        if title == 0 or title == "all":
+            main_feature = self.main_title + 1
+            titles = [t for t in self.titles]
+        elif title == "main":
+            main_feature = self.main_title + 1
+            titles = [self.titles[self.main_title]]
+        else:
+            main_feature = title + 1
+            titles = [self.titles[title - 1]]
+
+        partial = 0
+        overall_total = sum(int(t.runtime.total_seconds()) for t in titles)
+        for i, t in enumerate(titles):
+            total = int(t.runtime.total_seconds())
+            for p in range(total):
+                await asyncio.sleep(self.scan_factor)
+                if cancel and cancel.is_cancelled():
+                    return TitleSet(main_feature=0, title_list=[])
+                if progress_handler is not None:
+                    ps = ProgressScanning(
+                        preview=0,
+                        preview_count=0,
+                        progress=(partial + p) / overall_total,
+                        SequenceID=0,
+                        title=i + 1,
+                        title_count=len(self.titles),
+                    )
+                    progress_handler(Progress(scanning=ps, state="SCANNING"))
+            partial += total
+
+        return TitleSet(
+            main_feature=main_feature,
+            title_list=[t.get_title() for t in titles],
         )
 
     def get_preset(self, name: str) -> Preset:
