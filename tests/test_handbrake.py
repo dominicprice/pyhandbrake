@@ -3,7 +3,6 @@ from pathlib import Path
 
 from handbrake import HandBrake
 from handbrake.models.preset import Preset
-from handbrake.opts import ConvertOpts, ScanOpts
 
 SAMPLE_VIDEO = Path(__file__).parent / "sample.mp4"
 
@@ -26,7 +25,7 @@ def test_presets():
 
 def test_scan_all_titles():
     h = HandBrake()
-    titles = h.scan_titles(ScanOpts(SAMPLE_VIDEO, "all"))
+    titles = h.scan_titles(SAMPLE_VIDEO, "all")
     assert len(titles.title_list) == 1
     title = titles.title_list[0]
     assert title.duration.to_timedelta() == timedelta(seconds=16)
@@ -169,11 +168,11 @@ def test_convert_title(tmp_path: Path):
         version_minor=0,
     )
     h.convert_title(
-        ConvertOpts(
-            SAMPLE_VIDEO,
-            tmp_path / "output.mkv",
-            1,
-            preset="pytest",
-            presets=[p],
-        )
+        SAMPLE_VIDEO,
+        tmp_path / "output.mkv",
+        1,
+        {
+            "preset": "pytest",
+            "presets": [p],
+        },
     )

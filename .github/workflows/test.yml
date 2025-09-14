@@ -56,7 +56,7 @@ jobs:
           Expand-Archive -Path ./handbrakecli.zip -DestinationPath C:/
           echo "C:\Users\runneradmin\.local\bin" >> "$GITHUB_PATH"
       - name: Install pyhandbrake
-        run: poetry install
+        run: C:\Users\runneradmin\.local\bin\poetry install
       - name: Run tests
         run: |
           C:\Users\runneradmin\.local\bin\poetry run -m pytest tests/

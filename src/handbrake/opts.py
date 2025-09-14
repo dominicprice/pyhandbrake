@@ -1,8 +1,7 @@
 import os
 from contextlib import ExitStack
-from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
-from typing import Iterable, Literal
+from typing import Iterable, Literal, TypedDict
 
 from handbrake.models.common import Offset
 from handbrake.models.preset import Preset
@@ -11,117 +10,149 @@ AudioSelection = Literal["all", "first", "none"]
 SubtitleSelection = Literal["all", "first", "scan", "none"]
 
 
-@dataclass
-class ConvertOpts:
-    input: str | os.PathLike
-    output: str | os.PathLike
-    title: int | Literal["main"]
-    chapters: int | tuple[int, int] | None = None
-    angle: int | None = None
-    previews: tuple[int, bool] | None = None
-    start_at_preview: int | None = None
-    start_at: Offset | None = None
-    stop_at: Offset | None = None
-    audio: int | Iterable[int] | AudioSelection | None = None
-    subtitles: int | Iterable[int] | SubtitleSelection | None = None
-    preset: str | None = None
-    preset_files: Iterable[str | os.PathLike] | None = None
-    presets: Iterable[Preset] | None = None
-    preset_from_gui: bool = False
-    no_dvdnav: bool = False
+class ConvertOpts(TypedDict, total=False):
+    chapters: int | tuple[int, int]
+    angle: int
+    previews: tuple[int, bool]
+    start_at_preview: int
+    start_at: Offset
+    stop_at: Offset
+    audio: int | Iterable[int] | AudioSelection
+    subtitles: int | Iterable[int] | SubtitleSelection
+    preset: str
+    preset_files: Iterable[str | os.PathLike]
+    presets: Iterable[Preset]
+    preset_from_gui: bool
+    no_dvdnav: bool
 
-    def generate_cmd_args(self, stack: ExitStack) -> list[str]:
-        if self.title == 0:
-            raise ValueError("invalid title")
 
+def generate_convert_args(
+    stack: ExitStack,
+    input: str | os.PathLike,
+    output: str | os.PathLike,
+    title: int | Literal["main"],
+    opts: ConvertOpts | None,
+) -> list[str]:
+    if title == 0:
+        raise ValueError("invalid title")
+
+    # generate base args
+    args: list[str] = [
+        "--json",
+        "-i",
+        str(input),
+        "-o",
+        str(output),
+    ]
+    if title == "main":
+        args += ["--main-feature"]
+    else:
+        args += ["-t", str(title)]
+
+    # generate opts
+    if opts is not None:
         # generate list of preset import files
         preset_import_files: list[str] = []
-        if self.preset_files is not None:
-            preset_import_files += [str(f) for f in self.preset_files]
-        if self.presets is not None:
-            # generate a temporary file for each in-memory preset
-            for p in self.presets:
+        if preset_files := opts.get("preset_files"):
+            preset_import_files += [str(f) for f in preset_files]
+
+        # generate a temporary file for each in-memory preset
+        if opts.get("presets") is not None:
+            for p in opts.get("presets", []):
                 f = NamedTemporaryFile("w")
                 stack.enter_context(f)
                 f.write(p.model_dump_json(by_alias=True))
                 f.flush()
                 preset_import_files.append(f.name)
 
-        # generate args
-        args: list[str] = [
-            "--json",
-            "-i",
-            str(self.input),
-            "-o",
-            str(self.output),
-        ]
+        # preset args
         if len(preset_import_files) > 0:
             args += [
                 "--preset-import-file",
                 " ".join(preset_import_files),
             ]
-        if self.preset is not None:
-            args += ["--preset", self.preset]
-        if self.preset_from_gui:
+        if preset := opts.get("preset"):
+            args += ["--preset", preset]
+        if opts.get("preset_from_gui"):
             args += ["--preset-import-gui"]
-        if self.title == "main":
-            args += ["--main-feature"]
-        else:
-            args += ["-t", str(self.title)]
-        if self.no_dvdnav:
+
+        # dvdnav arg
+        if opts.get("no_dvdnav"):
             args += ["--no-dvdnav"]
-        if isinstance(self.chapters, tuple):
-            args += ["-c", f"{self.chapters[0]}-{self.chapters[1]}"]
-        elif isinstance(self.chapters, int):
-            args += ["-c", str(self.chapters)]
-        if self.angle is not None:
-            args += ["--angle", str(self.angle)]
-        if self.previews is not None:
-            args += ["--previews", f"{self.previews[0]}:{int(self.previews[1])}"]
-        if self.start_at_preview is not None:
-            args += ["--start-at-preview", str(self.start_at_preview)]
-        if self.start_at is not None:
-            args += ["--start-at", f"{self.start_at.unit}:{self.start_at.count}"]
-        if self.stop_at is not None:
-            args += ["--stop-at", f"{self.stop_at.unit}:{self.stop_at.count}"]
-        if isinstance(self.audio, int):
-            args += ["--audio", str(self.audio)]
-        elif self.audio == "all":
-            args += ["--all-audio"]
-        elif self.audio == "first":
-            args += ["--first-audio"]
-        elif self.audio == "none":
-            args += ["--audio", "none"]
-        elif self.audio is not None:
-            args += ["--audio", ",".join(str(a) for a in self.audio)]
-        if isinstance(self.subtitles, int):
-            args += ["--subtitle", str(self.subtitles)]
-        elif self.subtitles == "all":
-            args += ["--all-subtitles"]
-        elif self.subtitles == "first":
-            args += ["--first-subtitle"]
-        elif self.subtitles == "none":
-            args += ["--subtitle", "none"]
-        elif self.subtitles == "scan":
-            args += ["--subtitle", "scan"]
-        elif self.subtitles is not None:
-            args += ["--subtitle", ",".join(str(s) for s in self.subtitles)]
 
-        return args
+        # chapters arg
+        if (chapters := opts.get("chapters")) is not None:
+            if isinstance(chapters, tuple):
+                args += ["-c", f"{chapters[0]}-{chapters[1]}"]
+            elif isinstance(chapters, int):
+                args += ["-c", str(chapters)]
+
+        # angle arg
+        if (angle := opts.get("angle")) is not None:
+            args += ["--angle", str(angle)]
+
+        # preview args
+        if previews := opts.get("previews"):
+            args += [
+                "--previews",
+                f"{previews[0]}:{int(previews[1])}",
+            ]
+        if opts.get("start_at_preview") is not None:
+            args += ["--start-at-preview", str(opts.get("start_at_preview"))]
+
+        # start/stop args
+        if start_at := opts.get("start_at"):
+            args += [
+                "--start-at",
+                f"{start_at.unit}:{start_at.count}",
+            ]
+        if stop_at := opts.get("stop_at"):
+            args += [
+                "--stop-at",
+                f"{stop_at.unit}:{stop_at.count}",
+            ]
+
+        # audio args
+        if (audio := opts.get("audio")) is not None:
+            if isinstance(audio, int):
+                args += ["--audio", str(audio)]
+            elif audio == "all":
+                args += ["--all-audio"]
+            elif audio == "first":
+                args += ["--first-audio"]
+            elif audio == "none":
+                args += ["--audio", "none"]
+            else:
+                args += ["--audio", ",".join(str(a) for a in audio)]
+
+        # subtitle args
+        if (subtitles := opts.get("subtitles")) is not None:
+            if isinstance(subtitles, int):
+                args += ["--subtitle", str(subtitles)]
+            elif subtitles == "all":
+                args += ["--all-subtitles"]
+            elif subtitles == "first":
+                args += ["--first-subtitle"]
+            elif subtitles == "none":
+                args += ["--subtitle", "none"]
+            elif subtitles == "scan":
+                args += ["--subtitle", "scan"]
+            else:
+                args += ["--subtitle", ",".join(str(s) for s in subtitles)]
+
+    return args
 
 
-@dataclass
-class ScanOpts:
-    input: str | os.PathLike
-    title: int | Literal["main", "all"]
+def generate_scan_args(
+    input: str | os.PathLike,
+    title: int | Literal["main", "all"],
+) -> list[str]:
+    args: list[str] = ["--json", "-i", str(input), "--scan"]
+    if title == "main":
+        args += ["--main-feature"]
+    elif title == "all":
+        args += ["-t", "0"]
+    else:
+        args += ["-t", str(title)]
 
-    def generate_cmd_args(self) -> list[str]:
-        args: list[str] = ["--json", "-i", str(input), "--scan"]
-        if self.title == "main":
-            args += ["--main-feature"]
-        elif self.title == "all":
-            args += ["-t", "0"]
-        else:
-            args += ["-t", str(self.title)]
-
-        return args
+    return args

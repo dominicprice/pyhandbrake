@@ -2,13 +2,14 @@ import os
 import shutil
 import subprocess
 from contextlib import ExitStack
+from typing import Literal
 
 from handbrake.canceller import Canceller
 from handbrake.models.preset import Preset, PresetGroup, PresetInfo
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
 from handbrake.models.version import Version
-from handbrake.opts import ConvertOpts, ScanOpts
+from handbrake.opts import ConvertOpts, generate_scan_args, generate_convert_args
 from handbrake.progresshandler import ProgressHandler
 from handbrake.runner import (
     ConvertCommandRunner,
@@ -69,7 +70,10 @@ class HandBrake:
 
     def convert_title(
         self,
-        opts: ConvertOpts,
+        input: str | os.PathLike,
+        output: str | os.PathLike,
+        title: int | Literal["main"],
+        opts: ConvertOpts | None = None,
         progress_handler: ProgressHandler | None = None,
     ):
         """Convert a title from the input source
@@ -78,7 +82,7 @@ class HandBrake:
         :param progress_handler: a callback function to handle progress updates
         """
         with ExitStack() as stack:
-            args = opts.generate_cmd_args(stack)
+            args = generate_convert_args(stack, input, output, title, opts)
             runner = ConvertCommandRunner()
             for obj in runner.process(self.executable, *args):
                 if isinstance(obj, Progress):
@@ -87,7 +91,10 @@ class HandBrake:
 
     async def convert_title_async(
         self,
-        opts: ConvertOpts,
+        input: str | os.PathLike,
+        output: str | os.PathLike,
+        title: int | Literal["main"],
+        opts: ConvertOpts | None = None,
         progress_handler: ProgressHandler | None = None,
         cancel: Canceller | None = None,
     ):
@@ -97,7 +104,7 @@ class HandBrake:
         :param progress_handler: a callback function to handle progress updates
         """
         with ExitStack() as stack:
-            args = opts.generate_cmd_args(stack)
+            args = generate_convert_args(stack, input, output, title, opts)
             runner = ConvertCommandRunner()
             async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
                 if isinstance(obj, Progress):
@@ -106,7 +113,8 @@ class HandBrake:
 
     def scan_titles(
         self,
-        opts: ScanOpts,
+        input: str | os.PathLike,
+        title: int | Literal["main", "all"],
         progress_handler: ProgressHandler | None = None,
     ) -> TitleSet:
         """Scans the selected title and returns information about it
@@ -116,7 +124,7 @@ class HandBrake:
         :return: a `TitleSet` containing the selected title
         """
 
-        args = opts.generate_cmd_args()
+        args = generate_scan_args(input, title)
         title_set: TitleSet | None = None
         runner = ScanCommandRunner()
         for obj in runner.process(self.executable, *args):
@@ -135,7 +143,8 @@ class HandBrake:
 
     async def scan_title_async(
         self,
-        opts: ScanOpts,
+        input: str | os.PathLike,
+        title: int | Literal["main", "all"],
         progress_handler: ProgressHandler | None = None,
         cancel: Canceller | None = None,
     ) -> TitleSet:
@@ -146,7 +155,7 @@ class HandBrake:
         :return: a `TitleSet` containing the selected title
         """
 
-        args = opts.generate_cmd_args()
+        args = generate_scan_args(input, title)
         title_set: TitleSet | None = None
         runner = ScanCommandRunner()
         async for obj in runner.aprocess(self.executable, *args, cancel=cancel):
