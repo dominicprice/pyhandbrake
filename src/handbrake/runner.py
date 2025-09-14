@@ -113,7 +113,10 @@ class CommandRunner:
                 raise HandBrakeError(aproc.returncode)
 
         finally:
-            aproc.kill()
+            try:
+                aproc.terminate()
+            except ProcessLookupError:
+                pass
 
     def process(self, cmd: str, *args: str) -> Generator[Any, None, None]:
         # create process with pipes to output
@@ -125,18 +128,31 @@ class CommandRunner:
         if proc.stdout is None:
             raise ValueError
 
-        # slurp stdout line-by-line
-        while True:
-            stdout = proc.stdout.readline().rstrip()
-            if len(stdout) == 0 and proc.poll() is not None:
-                break
-            o = self.process_line(stdout)
-            if o is not None:
-                yield o
+        try:
+            # slurp stdout line-by-line
+            while True:
+                stdout = proc.stdout.readline()
+                if len(stdout) == 0 and proc.poll() is not None:
+                    break
+                o = self.process_line(stdout.rstrip())
+                if o is not None:
+                    yield o
 
-        # raise error on nonzero return code
-        if proc.returncode != 0:
-            raise HandBrakeError(proc.returncode)
+            # slurp the remaining output
+            lines = proc.stdout.read()
+            for line in lines.splitlines():
+                o = self.process_line(line.rstrip())
+                if o is not None:
+                    yield o
+
+            # raise error on nonzero return code
+            if proc.returncode != 0:
+                raise HandBrakeError(proc.returncode)
+        finally:
+            try:
+                proc.terminate()
+            except ProcessLookupError:
+                pass
 
 
 class VersionCommandRunner(CommandRunner):

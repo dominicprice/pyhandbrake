@@ -1,5 +1,6 @@
-from handbrake.models.preset import Preset
 from pathlib import Path
+
+from handbrake.models.preset import Preset
 
 sample_video_path = Path(__file__).parent / "sample.mp4"
 

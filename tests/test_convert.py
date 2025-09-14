@@ -1,11 +1,11 @@
 from pathlib import Path
+
 import pytest
 
 from handbrake import HandBrake
 from handbrake.models.progress import Progress
-from .helpers import sample_video_path, sample_preset
 
-pytest_plugins = ("pytest_asyncio",)
+from .helpers import sample_preset, sample_video_path
 
 
 def test_convert_title(tmp_path: Path):

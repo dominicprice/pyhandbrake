@@ -2,8 +2,6 @@ import pytest
 
 from handbrake import HandBrake
 
-pytest_plugins = ("pytest_asyncio",)
-
 
 def test_version():
     h = HandBrake()

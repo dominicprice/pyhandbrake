@@ -1,7 +1,7 @@
-from io import TextIOBase
 import os
 import shutil
 import subprocess
+from io import TextIOBase
 from typing import Literal
 
 from handbrake.canceller import Canceller

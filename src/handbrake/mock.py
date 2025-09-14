@@ -3,6 +3,7 @@ import json
 import os
 from dataclasses import dataclass
 from datetime import timedelta
+from io import TextIOBase
 from os import PathLike
 from time import sleep
 from typing import Iterable, Literal
@@ -291,6 +292,10 @@ class MockHandBrake(HandBrake):
     def list_presets(self) -> list[PresetGroup]:
         return []
 
-    def load_preset_from_file(self, file: str | PathLike) -> Preset:
+    def load_preset_from_file(self, file: str | PathLike | TextIOBase) -> Preset:
         _ = file
         return Preset(version_major=0, version_minor=0, version_micro=0, preset_list=[])
+
+    def save_preset_to_file(self, file: str | PathLike | TextIOBase, preset: Preset):
+        _ = file
+        _ = preset

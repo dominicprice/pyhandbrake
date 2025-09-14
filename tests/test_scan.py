@@ -1,10 +1,10 @@
 from datetime import timedelta
+
 import pytest
 
 from handbrake import HandBrake
-from .helpers import sample_video_path
 
-pytest_plugins = ("pytest_asyncio",)
+from .helpers import sample_video_path
 
 
 def test_scan_all_titles():
