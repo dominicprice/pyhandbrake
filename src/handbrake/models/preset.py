@@ -13,3 +13,13 @@ class Preset(HandBrakeModel):
     @property
     def version_string(self) -> str:
         return f"{self.version_major}.{self.version_minor}.{self.version_micro}"
+
+
+class PresetInfo(HandBrakeModel):
+    name: str
+    description: str
+
+
+class PresetGroup(HandBrakeModel):
+    name: str
+    presets: list[PresetInfo]
