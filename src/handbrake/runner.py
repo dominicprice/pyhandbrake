@@ -4,7 +4,7 @@ import subprocess
 from typing import Any, AsyncGenerator, Callable, Generator, Generic, TypeVar
 
 from handbrake.canceller import Canceller
-from handbrake.errors import HandBrakeError
+from handbrake.errors import CancelledError, HandBrakeError
 from handbrake.models.preset import Preset
 from handbrake.models.progress import Progress
 from handbrake.models.title import TitleSet
@@ -88,12 +88,13 @@ class CommandRunner:
 
             # slurp output while running
             while True:
-                if aproc.returncode is not None:
-                    break
-                elif cancel is not None and cancel.is_cancelled():
-                    return
+                if cancel is not None and cancel.is_cancelled():
+                    raise CancelledError
                 try:
+                    # get a whole line; if this returns empty then output has finished
                     line = await asyncio.wait_for(aproc.stdout.readline(), 1)
+                    if not line:
+                        break
                 except asyncio.TimeoutError:
                     pass
                 else:
@@ -101,18 +102,12 @@ class CommandRunner:
                     if o is not None:
                         yield o
 
-            # slurp the remaining output
-            lines = await aproc.stdout.read()
-            for line in lines.splitlines():
-                o = self.process_line(line.rstrip())
-                if o is not None:
-                    yield o
-
             # raise error on nonzero return code
-            if aproc.returncode != 0:
-                raise HandBrakeError(aproc.returncode)
+            if (returncode := await aproc.wait()) != 0:
+                raise HandBrakeError(returncode)
 
         finally:
+            # ensure program is terminated on exit
             try:
                 aproc.terminate()
             except ProcessLookupError:

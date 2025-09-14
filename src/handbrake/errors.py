@@ -5,3 +5,7 @@ class HandBrakeError(Exception):
 
     def __str__(self) -> str:
         return "handbrake exited with return code " + str(self.return_code)
+
+
+class CancelledError(Exception):
+    pass
