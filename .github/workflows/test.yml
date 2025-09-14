@@ -59,7 +59,7 @@ jobs:
         run: C:\Users\runneradmin\.local\bin\poetry install
       - name: Run tests
         run: |
-          C:\Users\runneradmin\.local\bin\poetry run -m pytest tests/
+          C:\Users\runneradmin\.local\bin\poetry run coverage run -m pytest tests/
           C:\Users\runneradmin\.local\bin\poetry run coverage report
 
   test-macos:
