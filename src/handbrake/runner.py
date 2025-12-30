@@ -173,7 +173,7 @@ class ConvertCommandRunner(CommandRunner):
 class ScanCommandRunner(CommandRunner):
     def __init__(self):
         progress_processor = OutputProcessor(
-            (b"Progress: {", b"}"),
+            (b"Progress: {", b"{"),
             (b"}", b"}"),
             Progress.model_validate_json,
         )
