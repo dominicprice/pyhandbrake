@@ -34,7 +34,7 @@ keywords = [
 "Bug Tracker" = "https://github.com/dominicprice/pyhandbrake/issues"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.10,<4.0"
 pydantic = "^2.9.2"
 
 
